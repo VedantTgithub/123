@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "828367404664",
+    "project_id": "mcproj-479cc",
+    "storage_bucket": "mcproj-479cc.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:828367404664:android:177640914063d8f479f78d",
+        "android_client_info": {
+          "package_name": "com.example.mcproj"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEUqU6S_6Yfg_es2gxi4TJRuDxAj8Vxdk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

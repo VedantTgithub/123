@@ -38,6 +38,16 @@ dependencies:
   firebase_core: ^2.25.3
   firebase_auth: ^4.17.3
   cloud_firestore: ^4.15.3
+  firebase_storage: ^11.6.9
+  image_picker: ^1.0.7
+  qr_code_scanner: ^1.0.1
+  qr_mobile_vision: ^5.0.1
+  url_launcher: ^6.2.5
+  flutter_blue: ^0.8.0
+  get: ^4.6.6
+  permission_handler: ^11.3.0
+  flutter_bluetooth_serial: ^0.4.0
+  http: ^0.13.1
 
 dev_dependencies:
   flutter_test:

@@ -103,7 +103,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
               // Navigate to the UploadPage
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => UploadPage()),
+                MaterialPageRoute(builder: (context) => ImageUploadPage()),
               ).then((value) => setState(() {
                     _currentIndex =
                         0; // Update the selected index when returning from the UploadPage

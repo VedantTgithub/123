@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:sensors/sensors.dart'; // Import the sensors package
 import 'DetailsPage.dart';
 import 'DietPage.dart';
 import 'FormPage.dart';
 import 'UploadPage.dart';
-import 'LoginPage.dart'; // Import the LoginPage to navigate for logout
+import 'LoginPage.dart';
 
 class PatientDashboard extends StatefulWidget {
   @override
@@ -15,12 +16,37 @@ class PatientDashboard extends StatefulWidget {
 class _PatientDashboardState extends State<PatientDashboard> {
   int _currentIndex = 0;
   List<Map<String, dynamic>> _formData = [];
+  double _tiltThreshold = 20.0; // Set the tilt angle threshold
 
   @override
   void initState() {
     super.initState();
     // Fetch form data from Firestore when the widget initializes
     _fetchFormData();
+    // Start listening to accelerometer data
+    accelerometerEvents.listen((AccelerometerEvent event) {
+      // Check if the phone is tilted beyond the threshold
+      if (event.z.abs() > _tiltThreshold) {
+        // Display pop-up message
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Stop tilting!'),
+              content: Text('Please do not tilt your device too much.'),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('OK'),
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close dialog
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      }
+    });
   }
 
   void _fetchFormData() async {
@@ -61,11 +87,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
         }).toList(),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.black, // Set the background color to black
-        elevation: 8, // Increase the elevation for prominence
-        selectedItemColor: Colors.white, // Set the selected item color to white
-        unselectedItemColor:
-            Colors.grey, // Set the unselected item color to grey
+        backgroundColor: Colors.black,
+        elevation: 8,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.grey,
         onTap: (index) {
           setState(() {
             _currentIndex = index;
@@ -76,7 +101,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
               // No need to navigate if already on the PatientDashboard
               break;
             case 1:
-              // Navigate to the FormPage with slide transition
               Navigator.push(
                 context,
                 PageRouteBuilder(
@@ -94,29 +118,24 @@ class _PatientDashboardState extends State<PatientDashboard> {
                       child: child,
                     );
                   },
-                  transitionDuration:
-                      Duration(milliseconds: 500), // Increased duration
+                  transitionDuration: Duration(milliseconds: 500),
                 ),
               );
               break;
             case 2:
-              // Navigate to the UploadPage
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => ImageUploadPage()),
               ).then((value) => setState(() {
-                    _currentIndex =
-                        0; // Update the selected index when returning from the UploadPage
+                    _currentIndex = 0;
                   }));
               break;
             case 3:
-              // Navigate to the DietPage
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => DietPage()),
               ).then((value) => setState(() {
-                    _currentIndex =
-                        0; // Update the selected index when returning from the DietPage
+                    _currentIndex = 0;
                   }));
               break;
           }
@@ -147,7 +166,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
   Widget _buildCard(Map<String, dynamic> data) {
     return GestureDetector(
       onTap: () {
-        // Navigate to a new page to display details when the card is clicked
         Navigator.push(
           context,
           MaterialPageRoute(

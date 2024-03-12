@@ -49,6 +49,7 @@ dependencies:
   flutter_bluetooth_serial: ^0.4.0
   http: ^0.13.1
   local_auth: ^2.2.0
+  shake_event: ^0.0.9
 
 dev_dependencies:
   flutter_test:

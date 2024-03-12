@@ -31,6 +31,7 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
       Map<Permission, PermissionStatus> statuses = await [
         Permission.camera,
         Permission.bluetooth,
+        Permission.bluetoothConnect, // Request BLUETOOTH_CONNECT permission
       ].request();
       // Check if any permission is denied
       if (statuses.values.any((status) => status.isDenied)) {

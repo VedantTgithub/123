@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'registration.dart';
 import 'patient_dashboard.dart'; // Import the patient dashboard page
 import 'doctor_dashboard.dart'; // Import the doctor dashboard page
+import 'package:local_auth/local_auth.dart'; // Import local_auth package
 
 class LoginPage extends StatefulWidget {
   @override
@@ -14,6 +15,35 @@ class _LoginPageState extends State<LoginPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   TextEditingController _emailController = TextEditingController();
   TextEditingController _passwordController = TextEditingController();
+  final LocalAuthentication _localAuth =
+      LocalAuthentication(); // Create an instance of LocalAuthentication
+
+  @override
+  void initState() {
+    super.initState();
+    _authenticate(); // Call biometric authentication when the page loads
+  }
+
+  Future<void> _authenticate() async {
+    bool authenticated = false;
+    try {
+      authenticated = await _localAuth.authenticate(
+        localizedReason:
+            'Authenticate to access the app', // Reason for authentication
+      );
+    } catch (e) {
+      print('Error authenticating: $e');
+    }
+
+    if (authenticated) {
+      // Biometric authentication successful, proceed to login
+      _login();
+    } else {
+      // Biometric authentication failed
+      // You can choose to handle this case as per your requirement
+      print('Biometric authentication failed');
+    }
+  }
 
   void _login() async {
     try {

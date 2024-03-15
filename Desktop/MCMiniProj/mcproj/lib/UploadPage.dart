@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,28 +17,31 @@ class ImageUploadPage extends StatefulWidget {
 class _ImageUploadPageState extends State<ImageUploadPage> {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final ImagePicker _picker = ImagePicker();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   File? _imageFile;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  final FlutterBluetoothSerial _bluetooth = FlutterBluetoothSerial.instance;
+  late QRViewController qrController;
+  String scannedQRData = '';
+  List<BluetoothDevice> _devicesList = [];
+  BluetoothDevice? _selectedDevice;
+  User? _user = FirebaseAuth.instance.currentUser;
 
   @override
   void initState() {
     super.initState();
     _requestPermissions();
+    _getDevices();
   }
 
   Future<void> _requestPermissions() async {
-    if (Platform.isAndroid) {
-      // Request CAMERA and BLUETOOTH permissions
-      Map<Permission, PermissionStatus> statuses = await [
-        Permission.camera,
-        Permission.bluetooth,
-        Permission.bluetoothConnect, // Request BLUETOOTH_CONNECT permission
-      ].request();
-      // Check if any permission is denied
-      if (statuses.values.any((status) => status.isDenied)) {
-        // Handle denied permissions
-        print('Some permissions are denied');
-      }
+    // Request CAMERA permissions
+    Map<Permission, PermissionStatus> statuses =
+        await [Permission.camera].request();
+    // Check if permission is denied
+    if (statuses[Permission.camera]!.isDenied) {
+      // Handle denied permissions
+      print('Camera permission is denied');
     }
   }
 
@@ -71,27 +75,55 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
       return;
     }
 
-    Reference ref = _storage
-        .ref()
-        .child('images/${DateTime.now().millisecondsSinceEpoch}.jpg');
-    UploadTask uploadTask = ref.putFile(_imageFile!);
-    TaskSnapshot snapshot = await uploadTask;
+    print('Starting image upload...');
 
-    String downloadUrl = await snapshot.ref.getDownloadURL();
+    try {
+      // Reference the user's document and the images collection inside it
+      DocumentReference userDocRef =
+          FirebaseFirestore.instance.collection('users').doc(_user!.uid);
+      CollectionReference imagesCollectionRef = userDocRef.collection('images');
 
-    await FirebaseFirestore.instance.collection('images').add({
-      'url': downloadUrl,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+      // Ensure that the user's document exists
+      if (!(await userDocRef.get()).exists) {
+        await userDocRef
+            .set({}); // Create an empty document if it doesn't exist
+      }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Image uploaded successfully'),
-      ),
-    );
+      // Upload image to Firebase Storage
+      Reference ref = _storage.ref().child(
+          'users/${_user!.uid}/images/${DateTime.now().millisecondsSinceEpoch}.jpg');
+      UploadTask uploadTask = ref.putFile(_imageFile!);
+
+      // Wait for the upload to complete
+      TaskSnapshot snapshot = await uploadTask;
+
+      // Get download URL of the uploaded image
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      print('Image uploaded successfully. Download URL: $downloadUrl');
+
+      // Create a new document in the images collection with auto-generated ID
+      DocumentReference newImageRef = await imagesCollectionRef.add({
+        'imgurl': downloadUrl,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Image uploaded successfully'),
+        ),
+      );
+    } catch (error) {
+      print('Error uploading image: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to upload image. Please try again later.'),
+        ),
+      );
+    }
   }
 
-  void _openQRScanner() {
+  Future<void> _openQRScanner() async {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -100,7 +132,7 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
     );
   }
 
-  void _openBluetoothSettings() async {
+  Future<void> _openBluetoothSettings() async {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -109,11 +141,45 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
     );
   }
 
+  Future<void> _getDevices() async {
+    List<BluetoothDevice> devices = [];
+    try {
+      devices = await _bluetooth.getBondedDevices();
+    } catch (ex) {
+      print("Error getting devices: $ex");
+    }
+
+    setState(() {
+      _devicesList = devices;
+    });
+  }
+
+  Future<void> _connectToDevice(BluetoothDevice device) async {
+    try {
+      await _bluetooth.connect(device).then((_) {
+        print('Connected to device ${device.name}');
+      });
+    } catch (ex) {
+      print("Error connecting to device: $ex");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Upload Image'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.photo),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => PhotosPage()),
+              );
+            },
+          ),
+        ],
       ),
       body: Center(
         child: Column(
@@ -152,6 +218,57 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class PhotosPage extends StatelessWidget {
+  final User? user = FirebaseAuth.instance.currentUser;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Photos'),
+      ),
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(user!.uid)
+            .collection('images')
+            .snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (snapshot.data!.docs.isEmpty) {
+            return Center(child: Text('No photos found.'));
+          }
+          return GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 8.0,
+              crossAxisSpacing: 8.0,
+            ),
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              var imageUrl = snapshot.data!.docs[index]['imgurl'];
+              return GestureDetector(
+                onTap: () {
+                  // Handle tap on image
+                },
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -334,4 +451,10 @@ class _BluetoothDevicesPageState extends State<BluetoothDevicesPage> {
       ),
     );
   }
+}
+
+void main() {
+  runApp(MaterialApp(
+    home: ImageUploadPage(),
+  ));
 }

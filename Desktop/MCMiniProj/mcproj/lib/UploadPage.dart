@@ -179,6 +179,14 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
               );
             },
           ),
+          IconButton(
+            icon: Icon(Icons.qr_code),
+            onPressed: _openQRScanner,
+          ),
+          IconButton(
+            icon: Icon(Icons.bluetooth),
+            onPressed: _openBluetoothSettings,
+          ),
         ],
       ),
       body: Center(
@@ -207,15 +215,6 @@ class _ImageUploadPageState extends State<ImageUploadPage> {
               child: Text('Upload Image'),
             ),
             SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _openQRScanner,
-              child: Text('Open QR Scanner'),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _openBluetoothSettings,
-              child: Text('Turn on Bluetooth'),
-            ),
           ],
         ),
       ),
